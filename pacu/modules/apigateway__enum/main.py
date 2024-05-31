@@ -32,7 +32,7 @@ parser.add_argument(
 pp = pprint.PrettyPrinter(indent=2)
 
 
-# Get all resources for  API
+# Get all resources for API
 #
 # return [] dict
 def get_api_resources(client, api_id):
@@ -69,9 +69,12 @@ def get_api_methods(client, api_id, resource):
 
 
 def get_api_keys(client):
-    response = client.get_api_keys(limit=500, includeValues=True)
-    if response.get('items'):
-        return response['items']
+    try:
+        response = client.get_api_keys(limit=500, includeValues=True)
+        if response.get('items'):
+            return response['items']
+    except client.exceptions.ClientError as e:
+        print(f"Failed to get API keys: {e}")
     return []
 
 
@@ -86,7 +89,7 @@ def get_client_certs(client):
     return data
 
 
-# If permissions supported export the API documentaion as Swagger File
+# If permissions supported export the API documentation as Swagger File
 def export_api_doc(client, session, api_summary, exportType='swagger'):
 
     files_names = []
@@ -169,7 +172,7 @@ def main(args, pacu):
         summary_data['clientCerts'] = get_client_certs(client)
 
         # Currently this only supports REST apis
-        # Get all apis in AWS Gatway
+        # Get all apis in AWS Gateway
         response = client.get_rest_apis()
 
         items = response['items']
@@ -177,7 +180,7 @@ def main(args, pacu):
         # for each api in the account
         for api in items:
 
-            # create api objecy summary
+            # create api object summary
             api_summary = {
                 'id': '',
                 'name': '',
@@ -195,7 +198,7 @@ def main(args, pacu):
 
             print(f"Enumerating API: {api_summary['name']}")
 
-            # For each resource get all methods and parse it into it's method summary.
+            # For each resource get all methods and parse it into its method summary.
             for resource in get_api_resources(client, api_summary['id']):
                 for method in get_api_methods(client, api_summary['id'], resource):
                     api_summary['urlPaths'].append(parse_method(api_summary['urlBase'], method, resource['path'], api_summary['stages']))
@@ -242,7 +245,7 @@ def summary(data, pacu):
         for key in data['apiKeys']:
             print(f"\tKey Name: {key['name']} \n\t\tValue: {key['value']} \n\t\tcreatedDate: {key['createdDate']}")
 
-        # Display Gloal Client Certs
+        # Display Global Client Certs
         print("-----Client Certs-----")
         for cert in data['clientCerts']:
             print(f"\tCert Id: {cert['clientCertificateId']} \n\t\texpirationDate: {cert['expirationDate']} \n\t\tpem: {cert['pemEncodedCertificate']}")
