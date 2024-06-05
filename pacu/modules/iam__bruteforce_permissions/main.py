@@ -1,29 +1,23 @@
 #!/usr/bin/env python3
 import argparse
+import os
 import sys
-
-# Import the enumerate-iam library from core
+from copy import deepcopy
 from pacu.core.enumerate_iam.main import enumerate_iam
 
 module_info = {
     'name': 'iam__bruteforce_permissions',
-    'author': 'Alexander Morgenstern at RhinoSecurityLabs',
+    'author': 'Rhino Security Labs',
     'category': 'ENUM',
     'one_liner': 'Enumerates permissions using brute force',
-    'description': "This module will automatically run through all possible API calls of supported services in order to enumerate permissions without the use of the IAM API.",
+    'description': "This module will automatically run through all possible API calls of supported services in order to enumerate permissions. This uses the 'enumerate-iam' library by Andres Riancho.",
     'services': ['all'],
     'prerequisite_modules': [],
     'external_dependencies': [],
-    'arguments_to_autocomplete': ['--services'],
 }
 
 parser = argparse.ArgumentParser(add_help=False, description=module_info['description'])
-parser.add_argument(
-    '--services',
-    required=False,
-    default=None,
-    help='A comma separated list of services to brute force permissions'
-)
+
 
 def main(args, pacu_main):
     session = pacu_main.get_active_session()
@@ -52,16 +46,22 @@ def main(args, pacu_main):
         for action, status in actions.items():
             print(f'  {action}: {status}')
 
+    # Write all the data to the Pacu DB for storage
+    iam_data = deepcopy(session.IAM)
+    for key, value in results.items():
+        if key in iam_data:
+            iam_data[key].update(value)
+        else:
+            iam_data[key] = value
+    session.update(pacu_main.database, IAM=iam_data)
+
     return results
 
 def summary(data, pacu_main):
-    out = 'Services: \n'
-    out += '  Supported: {}.\n'.format(data['services'])
-    if 'unsupported' in data:
-        out += '  Unsupported: {}.\n'.format(data['unsupported'])
-    if 'unknown' in data:
-        out += '  Unknown: {}.\n'.format(data['unknown'])
-    out += '{} allow permissions found.\n'.format(data['allow'])
-    out += '{} unknown permissions found.\n'.format(data['unknown'])
-    out += '{} deny permissions found.\n'.format(data['deny'])
+    out = ""
+
+    total_permissions = 0
+    for service in data['bruteforce']:
+        total_permissions += len(data['bruteforce'][service])
+    out += "Num of IAM permissions found: {} \n".format(total_permissions)
     return out
